@@ -6,7 +6,6 @@ from PIL import Image
 from torchvision import transforms
 import timm
 import os
-import time
 
 # ── Page config ───────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -197,9 +196,7 @@ with col_right:
         st.info("Upload a face image on the left to run detection.")
     else:
         with st.spinner("Running inference…"):
-            t0 = time.perf_counter()
             label, confidence, prob_fake = predict(model, num_classes, image)
-            ms = (time.perf_counter() - t0) * 1000
 
         # ── Result banner ──────────────────────────────────────────────────
         icon = "✅" if label == "REAL" else "🚨"
@@ -207,49 +204,9 @@ with col_right:
         st.markdown(f"""
         <div class="result-box {css}-box">
             <div class="{css}-label">{icon} {label}</div>
-            <div class="conf-text">Confidence: <strong>{confidence*100:.1f}%</strong></div>
         </div>""", unsafe_allow_html=True)
 
-        # ── Probability breakdown ──────────────────────────────────────────
-        st.markdown("**Probability**")
-        col_r, col_f = st.columns(2)
-        with col_r:
-            st.metric("🟢 Real", f"{(1-prob_fake)*100:.1f}%")
-            st.progress(float(1 - prob_fake))
-        with col_f:
-            st.metric("🔴 Fake", f"{prob_fake*100:.1f}%")
-            st.progress(float(prob_fake))
 
-        # ── Inference stats ────────────────────────────────────────────────
-        st.markdown("---")
-        c1, c2, c3 = st.columns(3)
-        c1.metric("Inference", f"{ms:.0f} ms")
-        c2.metric("Model", "Xception")
-        c3.metric("Classes", str(num_classes))
-
-        # ── Interpretation guide ───────────────────────────────────────────
-        with st.expander("📖 How to interpret"):
-            st.markdown(f"""
-**Model output:** `{'1 neuron (sigmoid)' if num_classes == 1 else '2 neurons (softmax)'}`
-
-| Confidence | Meaning |
-|---|---|
-| > 85 % | High certainty |
-| 65–85 % | Moderate — verify manually |
-| 50–65 % | Near decision boundary — inconclusive |
-
-**This model detects face-swap artefacts** introduced by FF++ manipulation methods
-(blending boundaries, texture inconsistencies, identity mismatches).
-It does **not** reliably detect GAN/diffusion portraits.
-            """)
-
-        # ── AI-generated image warning ─────────────────────────────────────
-        if label == "REAL" and confidence > 0.80:
-            st.markdown("""<div class="warn-box">
-            ℹ️ <b>High REAL confidence does NOT rule out AI generation.</b>
-            If you suspect this is a GAN/Stable Diffusion image,
-            this model cannot confirm or deny it — try a dedicated AI-image detector instead.
-            </div>""", unsafe_allow_html=True)
 
 # ── Footer ────────────────────────────────────────────────────────────────────
 st.markdown("---")
